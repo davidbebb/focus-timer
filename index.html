@@ -13,34 +13,72 @@
     <link rel="apple-touch-icon" href="https://placehold.co/180x180/4f46e5/ffffff?text=Timer">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            /* Subtle texture */
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d5db' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
-        .timer-progress-half, .timer-cap {
-            transition: all 1s linear;
+        .timer-progress-half {
+            transition: stroke-dashoffset 1s linear;
         }
-        .timer-visuals, .time-display, .timer-name {
+        .time-display, .timer-name {
              transition: opacity 0.3s ease;
         }
         .modal {
             transition: opacity 0.25s ease;
         }
         
-        /* --- Paused State: Fade the entire visual group and text --- */
-        .timer-card.paused .timer-visuals,
+        /* --- Paused State: Only fade the text --- */
         .timer-card.paused .time-display,
         .timer-card.paused .timer-name {
             opacity: 0.4;
         }
 
-        /* --- Hidden State for Caps at the start --- */
-        .timer-cap.hidden, .timer-top-cap.hidden {
-            opacity: 0;
+        /* --- Animations --- */
+        .timer-card {
+            animation: fadeInScaleUp 0.5s ease-out forwards;
         }
 
-        /* --- Confetti Animation --- */
+        #addTimerFormContainer {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: top;
+            max-height: 500px; /* Set a max-height for transition */
+        }
+
+        #addTimerFormContainer.form-hidden {
+            transform: scaleY(0.9);
+            opacity: 0;
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+            overflow: hidden;
+        }
+        
+        .action-button {
+             transition: all 0.2s ease-out;
+        }
+        .action-button:active {
+            transform: scale(0.95);
+            filter: brightness(0.95);
+        }
+
+        @keyframes fadeInScaleUp {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
         .confetti-container {
             position: absolute;
             top: 0; left: 0;
@@ -48,19 +86,20 @@
             height: 100%;
             overflow: hidden;
             pointer-events: none;
-            display: none; /* Hidden by default */
+            display: none;
         }
         .timer-card.finished .confetti-container {
-            display: block; /* Show on finished timers */
+            display: block;
         }
 
         .confetti {
             position: absolute;
-            width: 8px;
-            height: 16px;
+            width: 10px;
+            height: 20px;
             background: #f00;
             top: -20px;
-            animation: confetti-fall 3s ease-out infinite;
+            animation: confetti-fall 3.5s ease-out infinite;
+            border-radius: 4px;
         }
 
         @keyframes confetti-fall {
@@ -69,18 +108,17 @@
                 opacity: 1;
             }
             100% {
-                transform: translateY(150px) rotateZ(360deg) rotateY(180deg);
+                transform: translateY(200px) rotateZ(540deg) rotateY(360deg);
                 opacity: 0;
             }
         }
+
         /* Custom dropdown styles */
         .custom-select-option:hover, .custom-select-option:focus {
             background-color: #f3f4f6; /* gray-100 */
             outline: none;
         }
-        .icon-button {
-            transition: background-color 0.2s;
-        }
+
         /* Visually hide an element, but keep it accessible to screen readers */
         .sr-only {
           position: absolute;
@@ -95,30 +133,35 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-50 text-slate-800">
 
     <div id="app" class="container mx-auto p-4 md:p-8 max-w-5xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Focus Timer</h1>
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-bold text-slate-900">Focus Timer</h1>
         </header>
 
         <!-- Form to add a new timer -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div id="addTimerFormContainer" class="bg-white p-6 rounded-2xl shadow-lg mb-10 relative">
+             <button id="hideFormBtn" aria-label="Hide add timer menu" class="action-button absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-100">
+                <svg class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor">
+                    <use href="#icon-close"></use>
+                </svg>
+            </button>
             <form id="addTimerForm">
                 <div class="flex flex-col sm:flex-row sm:items-end sm:gap-4">
                     <div class="flex-grow">
-                        <label for="timerName" class="block text-sm font-medium text-gray-700">Timer Name</label>
-                        <input type="text" id="timerName" name="timerName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="e.g., Study Session" required>
+                        <label for="timerName" class="block text-sm font-medium text-slate-700">Timer Name</label>
+                        <input type="text" id="timerName" name="timerName" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="e.g., Deep Work Session" required>
                     </div>
                     <div class="mt-4 sm:mt-0 sm:w-32 flex-shrink-0">
-                        <label for="timerDuration" class="block text-sm font-medium text-gray-700">Duration (min)</label>
-                        <input type="number" id="timerDuration" name="timerDuration" min="1" max="180" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="1-180" required>
+                        <label for="timerDuration" class="block text-sm font-medium text-slate-700">Duration (min)</label>
+                        <input type="number" id="timerDuration" name="timerDuration" min="1" max="180" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="1-180" required>
                     </div>
                      <div class="mt-4 sm:mt-0 sm:w-40 flex-shrink-0">
-                        <label id="color-label" class="block text-sm font-medium text-gray-700">Color</label>
+                        <label id="color-label" class="block text-sm font-medium text-slate-700">Color</label>
                         <div id="customColorDropdown" class="relative mt-1">
                             <input type="hidden" id="timerColor" name="timerColor" value="text-indigo-600">
-                            <button type="button" id="customColorButton" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="color-label" class="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                            <button type="button" id="customColorButton" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="color-label" class="relative w-full cursor-default rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
                                 <span class="flex items-center">
                                     <span id="selectedColorSwatch" class="h-4 w-4 flex-shrink-0 rounded-md bg-indigo-600"></span>
                                     <span id="selectedColorName" class="ml-3 block truncate">Indigo</span>
@@ -132,8 +175,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Add Timer Button -->
-                     <button type="submit" aria-label="Add Timer" class="mt-4 sm:mt-0 w-full sm:w-10 h-10 flex-shrink-0 flex items-center justify-center p-2 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     <button type="submit" aria-label="Add Timer" class="action-button mt-4 sm:mt-0 w-full sm:w-10 h-10 flex-shrink-0 flex items-center justify-center p-2 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                             <use href="#icon-plus"></use>
                         </svg>
@@ -142,13 +184,16 @@
             </form>
         </div>
 
-        <!-- Container for timers -->
-        <div id="timersContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="timersContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <!-- Timers will be injected here -->
         </div>
     </div>
     
-    <!-- Modal for error messages -->
+    <!-- Floating Action Button -->
+    <button id="showFormBtn" aria-label="Add a new timer" class="action-button fixed bottom-8 right-8 w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg flex items-center justify-center hidden z-20">
+        <svg class="w-8 h-8" viewBox="0 0 20 20" fill="currentColor"><use href="#icon-plus"></use></svg>
+    </button>
+    
     <div id="errorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
@@ -165,12 +210,12 @@
       </div>
     </div>
 
-    <!-- SVG Icons Definition -->
     <svg width="0" height="0" class="absolute">
       <symbol id="icon-play" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path></symbol>
       <symbol id="icon-pause" viewBox="0 0 20 20" fill="currentColor"><path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5zm6.5 0a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"></path></symbol>
       <symbol id="icon-trash" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></symbol>
       <symbol id="icon-plus" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"></path></symbol>
+      <symbol id="icon-close" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></symbol>
     </svg>
 
     <script type="module">
@@ -184,6 +229,9 @@
         }
 
         // --- UI Elements ---
+        const addTimerFormContainer = document.getElementById('addTimerFormContainer');
+        const hideFormBtn = document.getElementById('hideFormBtn');
+        const showFormBtn = document.getElementById('showFormBtn');
         const addTimerForm = document.getElementById('addTimerForm');
         const timersContainer = document.getElementById('timersContainer');
         const errorModal = document.getElementById('errorModal');
@@ -209,9 +257,20 @@
             { name: 'Sky Blue', value: 'text-sky-600', swatch: 'bg-sky-600' },
         ];
         
-        // --- Custom Dropdown Logic (for accessibility) remains the same ---
-        // This section is unchanged.
+        // --- Form Visibility Logic ---
+        function showForm(visible) {
+            if (visible) {
+                addTimerFormContainer.classList.remove('form-hidden');
+                showFormBtn.classList.add('hidden');
+            } else {
+                addTimerFormContainer.classList.add('form-hidden');
+                showFormBtn.classList.remove('hidden');
+            }
+        }
 
+        hideFormBtn.addEventListener('click', () => showForm(false));
+        showFormBtn.addEventListener('click', () => showForm(true));
+        
         // --- Play/Pause Logic ---
         function togglePlayPause(timerId) {
             const timer = timers[timerId];
@@ -221,7 +280,6 @@
             timer.data.isPaused = !timer.data.isPaused;
 
             if (timer.data.isPaused) {
-                // Pause
                 timerWrapper.classList.add('paused');
                 const elapsedSinceLastStart = (Date.now() - timer.data.lastStartTime) / 1000;
                 timer.data.totalElapsedSeconds += elapsedSinceLastStart;
@@ -230,7 +288,6 @@
                     timer.intervalId = null;
                 }
             } else {
-                // Play
                 timerWrapper.classList.remove('paused');
                 timer.data.lastStartTime = Date.now();
                 startTimerInterval(timerId);
@@ -244,7 +301,6 @@
             if (!button) return;
             const use = button.querySelector('use');
             const label = button.querySelector('.sr-only');
-
             const isPaused = timers[timerId].data.isPaused;
             use.setAttribute('href', isPaused ? '#icon-play' : '#icon-pause');
             label.textContent = isPaused ? 'Play' : 'Pause';
@@ -252,8 +308,7 @@
         
         function startTimerInterval(timerId) {
             const timer = timers[timerId];
-            if (timer.intervalId) clearInterval(timer.intervalId); // Ensure no multiple intervals
-            
+            if (timer.intervalId) clearInterval(timer.intervalId);
             timer.intervalId = setInterval(() => updateTimerDisplay(timerId), 1000);
         }
 
@@ -268,11 +323,12 @@
 
         function loadTimers() {
             const storedTimers = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (!storedTimers) return;
+            if (!storedTimers) return [];
             const timersArray = JSON.parse(storedTimers);
             timersArray.forEach(timerData => {
                 renderTimer(timerData.id, timerData);
             });
+            return timersArray;
         }
         
         // --- Form Submission ---
@@ -301,122 +357,100 @@
             renderTimer(newTimerData.id, newTimerData);
             saveTimers();
             addTimerForm.reset();
+            showForm(false);
         });
         
         function deleteTimer(timerId) {
             removeTimerFromUI(timerId);
             saveTimers();
+            if (Object.keys(timers).length === 0) {
+                showForm(true);
+            }
         }
 
         // --- UI Rendering and Updates ---
         function renderTimer(id, data) {
             if (timers[id]) return;
-
             const timerWrapper = document.createElement('div');
             timerWrapper.id = `timer-${id}`;
-            timerWrapper.className = `timer-card bg-white p-5 rounded-lg shadow-md flex flex-col relative`;
-            
+            timerWrapper.className = `timer-card bg-white p-5 rounded-2xl shadow-xl flex flex-col relative`;
             const radius = 85; 
             const strokeWidth = 30;
             const halfCircumference = Math.PI * radius;
-
             timerWrapper.innerHTML = `
-                <div class="flex-grow flex flex-col items-center space-y-2 w-full">
+                <div class="flex-grow flex flex-col items-center space-y-4 w-full">
                     <div class="relative w-56 h-56">
                         <div class="confetti-container"></div>
                         <div class="sr-only" aria-live="polite" id="timer-status-${id}"></div>
                         <svg class="w-full h-full" viewBox="0 0 200 200" aria-hidden="true">
                             <g class="timer-visuals">
-                                <!-- Grey Background Circle -->
-                                <circle cx="100" cy="100" r="${radius}" fill="none" stroke="#e6e6e6" stroke-width="${strokeWidth}"/>
-                                
-                                <!-- Colored Left Half (progress) -->
+                                <circle cx="100" cy="100" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="${strokeWidth}"/>
                                 <path class="timer-progress-half" d="M 100, ${100 - radius} A ${radius},${radius} 0 0 0 100, ${100 + radius}" 
                                     fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round"/>
-
-                                <!-- Colored Right Half (progress) -->
                                 <path class="timer-progress-half" d="M 100, ${100 - radius} A ${radius},${radius} 0 0 1 100, ${100 + radius}" 
                                     fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round"/>
                             </g>
                         </svg>
-                        <div id="time-display-${id}" aria-label="Time remaining" class="time-display absolute inset-0 flex items-center justify-center text-5xl font-bold text-gray-800"></div>
+                        <div id="time-display-${id}" aria-label="Time remaining" class="time-display absolute inset-0 flex items-center justify-center text-5xl font-bold text-slate-800"></div>
                     </div>
-                    <h3 class="timer-name text-lg font-semibold text-gray-700 text-center">${data.name}</h3>
+                    <h3 class="timer-name text-xl font-semibold text-slate-700 text-center">${data.name}</h3>
                 </div>
-                <div class="w-full flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                    <button data-id="${id}" class="play-pause-btn icon-button p-2 rounded-full hover:bg-gray-200 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <div class="w-full flex justify-between items-center mt-4 pt-4 border-t border-slate-100">
+                    <button data-id="${id}" class="action-button play-pause-btn p-2 rounded-full hover:bg-slate-200 text-slate-600 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <svg class="w-6 h-6"><use href="#icon-pause"></use></svg>
                         <span class="sr-only">Pause</span>
                     </button>
-                    <button data-id="${id}" class="delete-btn icon-button p-2 rounded-full hover:bg-gray-200 text-gray-600 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <button data-id="${id}" class="action-button delete-btn p-2 rounded-full hover:bg-slate-200 text-slate-600 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                         <svg class="w-6 h-6"><use href="#icon-trash"></use></svg>
                         <span class="sr-only">Delete</span>
                     </button>
                 </div>
             `;
-            
             const progressHalves = timerWrapper.querySelectorAll('.timer-progress-half');
             progressHalves.forEach(el => {
                 el.classList.add(data.color);
                 el.style.strokeDasharray = halfCircumference;
-                el.style.strokeDashoffset = halfCircumference; // Start empty
+                el.style.strokeDashoffset = halfCircumference;
             });
-
-
-            // Add paused class if loaded in paused state
             if (data.isPaused) {
                 timerWrapper.classList.add('paused');
             }
-
             timersContainer.appendChild(timerWrapper);
-            
             const playPauseBtn = timerWrapper.querySelector('.play-pause-btn');
             playPauseBtn.addEventListener('click', () => togglePlayPause(id));
-
             const deleteBtn = timerWrapper.querySelector('.delete-btn');
             deleteBtn.addEventListener('click', () => deleteTimer(id));
-
             timers[id] = { data: data, intervalId: null };
-            
             updatePlayPauseButton(id);
             updateTimerDisplay(id); 
-            
             if (!data.isPaused && !data.finished) {
                  startTimerInterval(id);
             }
         }
-
         function updateTimerDisplay(id) {
             const timer = timers[id];
             if (!timer) return;
-
             const timeDisplay = document.getElementById(`time-display-${id}`);
             const progressPaths = document.querySelectorAll(`#timer-${id} .timer-progress-half`);
-            
             const setProgress = (progress) => {
                 const radius = 85;
                 const halfCircumference = Math.PI * radius;
                 const offset = halfCircumference * (1 - progress);
                 progressPaths.forEach(path => path.style.strokeDashoffset = offset);
             };
-
             if (timer.data.finished) {
                 setTimerToFinishedState(id);
                 setProgress(1); 
                 return;
             }
-
             let totalElapsed = timer.data.totalElapsedSeconds;
             if (!timer.data.isPaused) {
                 totalElapsed += (Date.now() - timer.data.lastStartTime) / 1000;
             }
-
             const totalDurationSeconds = timer.data.duration * 60;
             const remainingSeconds = Math.max(0, totalDurationSeconds - totalElapsed);
             const progress = totalElapsed / totalDurationSeconds;
-            
             setProgress(progress);
-
             if (remainingSeconds <= 0) {
                 timer.data.finished = true;
                 setTimerToFinishedState(id);
@@ -430,52 +464,43 @@
                 timeDisplay.textContent = `${remainingMinutes}`;
             }
         }
-
         function setTimerToFinishedState(id) {
             const timerElement = document.getElementById(`timer-${id}`);
             const timeDisplay = document.getElementById(`time-display-${id}`);
             const playPauseBtn = timerElement.querySelector('.play-pause-btn');
             const statusAnnouncer = document.getElementById(`timer-status-${id}`);
-            
             if (!timerElement || !timeDisplay) return;
-
             timeDisplay.textContent = "Done!";
             timeDisplay.classList.remove('text-5xl');
             timeDisplay.classList.add('text-3xl');
-            
             if (playPauseBtn) {
                 playPauseBtn.disabled = true;
                 playPauseBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
-            
             if (statusAnnouncer && !timerElement.classList.contains('finished')) {
                  statusAnnouncer.textContent = `Timer ${timers[id].data.name} has finished.`;
             }
-
             timerElement.classList.add('finished');
             triggerConfetti(id);
         }
-        
-        // --- Confetti, Modal, and other functions remain unchanged ---
-        // ... (This section is unchanged)
-
-        // --- Initial Application Start ---
-        document.addEventListener('DOMContentLoaded', () => {
-            populateColorOptions();
-            loadTimers();
-        });
-        
-        // --- Utility Functions (unchanged section starts here) ---
+        function triggerConfetti(id) {
+            const container = document.querySelector(`#timer-${id} .confetti-container`);
+            if (!container || container.children.length > 0) return;
+            for (let i = 0; i < 20; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+                confetti.style.animationDelay = `${Math.random() * 3}s`;
+                confetti.style.animationDuration = `${Math.random() * 2 + 3}s`;
+                confetti.style.transform = `scale(${Math.random() * 0.8 + 0.5})`;
+                container.appendChild(confetti);
+            }
+        }
         function showErrorModal(message) { errorMessage.textContent = message; errorModal.classList.remove('hidden'); }
         closeModalBtn.addEventListener('click', () => { errorModal.classList.add('hidden'); });
-
-        function toggleDropdown(show) {
-            const isVisible = !customColorOptions.classList.contains('hidden');
-            if (show === undefined) show = !isVisible;
-            customColorOptions.classList.toggle('hidden', !show);
-            customColorButton.setAttribute('aria-expanded', show);
-        }
-
+        
+        // --- RESTORED DROPDOWN FUNCTIONS ---
         function selectColor(optionElement) {
             hiddenColorInput.value = optionElement.dataset.value;
             selectedColorName.textContent = optionElement.dataset.name;
@@ -503,6 +528,13 @@
                 optionEl.addEventListener('click', () => selectColor(optionEl));
                 customColorOptions.appendChild(optionEl);
             });
+        }
+
+        function toggleDropdown(show) {
+            const isVisible = !customColorOptions.classList.contains('hidden');
+            if (show === undefined) show = !isVisible;
+            customColorOptions.classList.toggle('hidden', !show);
+            customColorButton.setAttribute('aria-expanded', show);
         }
         
         customColorButton.addEventListener('click', () => toggleDropdown());
@@ -536,20 +568,6 @@
                 toggleDropdown(false);
             }
         });
-
-        function triggerConfetti(id) {
-            const container = document.querySelector(`#timer-${id} .confetti-container`);
-            if (!container || container.children.length > 0) return;
-            for (let i = 0; i < 15; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = `${Math.random() * 100}%`;
-                confetti.style.backgroundColor = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
-                confetti.style.animationDelay = `${Math.random() * 2}s`;
-                confetti.style.transform = `scale(${Math.random() * 0.75 + 0.25})`;
-                container.appendChild(confetti);
-            }
-        }
         
         function removeTimerFromUI(timerId) {
             const timer = timers[timerId];
@@ -562,6 +580,17 @@
                 timerElement.remove();
             }
         }
+
+        // --- Initial Application Start ---
+        document.addEventListener('DOMContentLoaded', () => {
+            populateColorOptions();
+            const loadedTimers = loadTimers();
+            if (loadedTimers.length === 0) {
+                showForm(true);
+            } else {
+                showForm(false);
+            }
+        });
     </script>
 </body>
 </html>
