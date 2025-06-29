@@ -1,0 +1,14 @@
+{
+  "name": "focus-timer",
+  "version": "1.0.0",
+  "description": "A simple offline-capable focus timer.",
+  "scripts": {
+    "start": "http-server -c-1 -p 8080",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "jest": "^30.0.3",
+    "jsdom": "^26.1.0"
+  }
+}
